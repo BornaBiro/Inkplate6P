@@ -27,104 +27,105 @@ Inkplate::Inkplate(uint8_t _mode) : Adafruit_GFX(E_INK_WIDTH, E_INK_HEIGHT) {
 }
 
 void Inkplate::begin(void) {
-  if(_beginDone == 1) return;
-  Wire.begin();
-  WAKEUP_SET;
-  delay(1);
-  Wire.beginTransmission(0x48);
-  Wire.write(0x09);
-  Wire.write(B00011011); // Power up seq.
-  Wire.write(B00000000); // Power up delay (3mS per rail)
-  Wire.write(B00011011); // Power down seq.
-  Wire.write(B00000000); // Power down delay (6mS per rail)
-  Wire.endTransmission();
-  delay(1);
-  WAKEUP_CLEAR;
-  memset(mcpRegsInt, 0, 22);
-  memset(mcpRegsEx, 0, 22);
+    if(_beginDone == 1) return;
+    Wire.begin();
+    memset(mcpRegsInt, 0, 22);
+    memset(mcpRegsEx, 0, 22);
+    mcpBegin(MCP23017_INT_ADDR, mcpRegsInt);
+    mcpBegin(MCP23017_EXT_ADDR, mcpRegsEx);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, VCOM, OUTPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, PWRUP, OUTPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, WAKEUP, OUTPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, GPIO0_ENABLE, OUTPUT);
+    digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, GPIO0_ENABLE, HIGH);
   
-  mcpBegin(MCP23017_INT_ADDR, mcpRegsInt);
-  mcpBegin(MCP23017_EXT_ADDR, mcpRegsEx);
+    WAKEUP_SET;
+    delay(1);
+    Wire.beginTransmission(0x48);
+    Wire.write(0x09);
+    Wire.write(B00011011); // Power up seq.
+    Wire.write(B00000000); // Power up delay (3mS per rail)
+    Wire.write(B00011011); // Power down seq.
+    Wire.write(B00000000); // Power down delay (6mS per rail)
+    Wire.endTransmission();
+    delay(1);
+    WAKEUP_CLEAR;
   
-  //Set all pins of seconds I/O expander to outputs, low.
-  //For some reason, it draw more current in deep sleep when pins are set as inputs...
-  for(int i = 0; i<15; i++)
-  {
-      pinModeInternal(MCP23017_EXT_ADDR, mcpRegsInt, i, OUTPUT);
-      digitalWriteInternal(MCP23017_EXT_ADDR, mcpRegsInt, i, LOW);
-  }
+    //Set all pins of seconds I/O expander to outputs, low.
+    //For some reason, it draw more current in deep sleep when pins are set as inputs...
+    for(int i = 0; i < 15; i++)
+    {
+        pinModeInternal(MCP23017_EXT_ADDR, mcpRegsInt, i, OUTPUT);
+        digitalWriteInternal(MCP23017_EXT_ADDR, mcpRegsInt, i, LOW);
+    }
   
-  //For same reason, unused pins of first I/O expander have to be also set as outputs, low.
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 13, OUTPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 14, OUTPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 15, OUTPUT);
-  digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, 13, LOW);
-  digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, 14, LOW);
-  digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, 15, LOW);
-  
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, VCOM, OUTPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, PWRUP, OUTPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, WAKEUP, OUTPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, GPIO0_ENABLE, OUTPUT);
-  digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, GPIO0_ENABLE, HIGH);
+    //For same reason, unused pins of first I/O expander have to be also set as outputs, low.
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 13, OUTPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 14, OUTPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 15, OUTPUT);
+    digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, 13, LOW);
+    digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, 14, LOW);
+    digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, 15, LOW);
 
-  //CONTROL PINS
-  pinMode(0, OUTPUT);
-  pinMode(2, OUTPUT);
-  pinMode(32, OUTPUT);
-  pinMode(33, OUTPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, OE, OUTPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, GMOD, OUTPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, SPV, OUTPUT);
-  //pinMode(SPV, OUTPUT);
+    // CONTROL PINS
+    pinMode(0, OUTPUT);
+    pinMode(2, OUTPUT);
+    pinMode(32, OUTPUT);
+    pinMode(33, OUTPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, OE, OUTPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, GMOD, OUTPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, SPV, OUTPUT);
 
-  //DATA PINS
-  pinMode(4, OUTPUT); //D0
-  pinMode(5, OUTPUT);
-  pinMode(18, OUTPUT);
-  pinMode(19, OUTPUT);
-  pinMode(23, OUTPUT);
-  pinMode(25, OUTPUT);
-  pinMode(26, OUTPUT);
-  pinMode(27, OUTPUT); //D7
+    // DATA PINS
+    pinMode(4, OUTPUT); //D0
+    pinMode(5, OUTPUT);
+    pinMode(18, OUTPUT);
+    pinMode(19, OUTPUT);
+    pinMode(23, OUTPUT);
+    pinMode(25, OUTPUT);
+    pinMode(26, OUTPUT);
+    pinMode(27, OUTPUT); //D7
   
-  //TOUCHPAD PINS
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 10, INPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 11, INPUT);
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 12, INPUT);
+    // TOUCHPAD PINS
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 10, INPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 11, INPUT);
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 12, INPUT);
   
-  //Battery voltage Switch MOSFET
-  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 9, OUTPUT);
+    // Battery voltage Switch MOSFET
+    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 9, OUTPUT);
   
-  D_memory_new = (uint8_t*)ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 8);
-  _partial = (uint8_t*)ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 8);
-  _pBuffer = (uint8_t*) ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 4);
-  D_memory4Bit = (uint8_t*)ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 2);
-  GLUT = (uint32_t*)malloc(256 * 9 * sizeof(uint32_t));
-  GLUT2 = (uint32_t*)malloc(256 * 9 * sizeof(uint32_t));
-  if (D_memory_new == NULL || _partial == NULL || _pBuffer == NULL || D_memory4Bit == NULL || GLUT == NULL || GLUT2 == NULL) {
-    do {
-      delay(100);
-    } while (true);
-  }
-  memset(D_memory_new, 0, E_INK_WIDTH * E_INK_HEIGHT / 8);
-  memset(_partial, 0, E_INK_WIDTH * E_INK_HEIGHT / 8);
-  memset(_pBuffer, 0, E_INK_WIDTH * E_INK_HEIGHT / 4);
-  memset(D_memory4Bit, 255, E_INK_WIDTH * E_INK_HEIGHT / 2);
+    D_memory_new = (uint8_t*)ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 8);
+    _partial = (uint8_t*)ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 8);
+    _pBuffer = (uint8_t*) ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 4);
+    D_memory4Bit = (uint8_t*)ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 2);
+    GLUT = (uint32_t*)malloc(256 * 9 * sizeof(uint32_t));
+    GLUT2 = (uint32_t*)malloc(256 * 9 * sizeof(uint32_t));
+    if (D_memory_new == NULL || _partial == NULL || _pBuffer == NULL || D_memory4Bit == NULL || GLUT == NULL || GLUT2 == NULL)
+    {
+        do
+        {
+            delay(100);
+        }
+        while (true);
+    }
+    memset(D_memory_new, 0, E_INK_WIDTH * E_INK_HEIGHT / 8);
+    memset(_partial, 0, E_INK_WIDTH * E_INK_HEIGHT / 8);
+    memset(_pBuffer, 0, E_INK_WIDTH * E_INK_HEIGHT / 4);
+    memset(D_memory4Bit, 255, E_INK_WIDTH * E_INK_HEIGHT / 2);
   
     for (int j = 0; j < 9; ++j) {
         for (uint32_t i = 0; i < 256; ++i)
         {
-            uint8_t z = (waveform3Bit[i & 0x07][j] << 2) | (waveform3Bit[(i>>4) & 0x07][j]);
+            uint8_t z = (waveform3Bit[i & 0x07][j] << 2) | (waveform3Bit[(i >> 4) & 0x07][j]);
             GLUT[j * 256 + i] = ((z & B00000011) << 4) | (((z & B00001100) >> 2) << 18) | (((z & B00010000) >> 4) << 23) |
                             (((z & B11100000) >> 5) << 25);
-            z = ((waveform3Bit[i & 0x07][j] << 2) | (waveform3Bit[(i>>4) & 0x07][j])) << 4;
+            z = ((waveform3Bit[i & 0x07][j] << 2) | (waveform3Bit[(i >> 4) & 0x07][j])) << 4;
             GLUT2[j * 256 + i] = ((z & B00000011) << 4) | (((z & B00001100) >> 2) << 18) | (((z & B00010000) >> 4) << 23) |
                             (((z & B11100000) >> 5) << 25);
         }
     }
   
-  _beginDone = 1;
+    _beginDone = 1;
 }
 
 //Draw function, used by Adafruit GFX.
