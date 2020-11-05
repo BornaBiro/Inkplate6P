@@ -122,8 +122,19 @@ NOTE: This library is still heavily in progress, so there is still some bugs. Us
 #define _swap_int16_t(a, b) { int16_t t = a; a = b; b = t; }
 #endif
 
+// Touchscreen defines
+#define   TS_RTS              13
+#define   TS_INT              36
+#define   TS_ADDR             0x15
+
+
 extern SPIClass spi2;
 extern SdFat sd;
+static volatile bool _tsFlag = false;
+static void IRAM_ATTR tsInt()
+{
+  _tsFlag = true;
+}
 
 class Inkplate : public Adafruit_GFX {
   public:
@@ -195,6 +206,13 @@ class Inkplate : public Adafruit_GFX {
 	uint16_t getINTstate();
 	void setPorts(uint16_t _d);
 	uint16_t getPorts();
+    
+    // Touchscreen public functions
+    bool tsInit(uint8_t _pwrState);
+    bool tsAvailable();
+    void tsSetPowerState(uint8_t _s);
+    uint8_t tsGetPowerState();
+    uint8_t tsGetData(uint16_t *xPos, uint16_t *yPos);
 
   private:
 	uint8_t mcpRegsInt[22], mcpRegsEx[22];
@@ -205,6 +223,11 @@ class Inkplate : public Adafruit_GFX {
 	int sdCardOk = 0;
 	uint8_t _blockPartial = 1;
 	uint8_t _beginDone = 0;
+    
+    // Touchscreen private variables
+    const char hello_packet[4] = {0x55, 0x55, 0x55, 0x55};
+    uint16_t _tsXResolution;
+    uint16_t _tsYResolution;
 	
 	void display1b();
     void display3b();
@@ -231,6 +254,15 @@ class Inkplate : public Adafruit_GFX {
 	uint16_t getINTstateInternal(uint8_t _addr, uint8_t* _r);
 	void setPortsInternal(uint8_t _addr, uint8_t* _r, uint16_t _d);
 	uint16_t getPortsInternal(uint8_t _addr, uint8_t* _r);
+    
+    // Touchscreen private functions
+    uint8_t tsWriteRegs(uint8_t _addr, const uint8_t *_buff, uint8_t _size);
+    void tsReadRegs(uint8_t _addr, uint8_t *_buff, uint8_t _size);
+    void tsHardwareReset();
+    bool tsSoftwareReset();
+    void tsGetRawData(uint8_t *b);
+    void tsGetXY(uint8_t *_d, uint16_t *x, uint16_t *y);
+    void tsGetResolution(uint16_t *xRes, uint16_t *yRes);
 };
 
 #endif

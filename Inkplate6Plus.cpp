@@ -1081,3 +1081,145 @@ void Inkplate::setPorts(uint16_t _d) {
 uint16_t Inkplate::getPorts() {
 	return getPortsInternal(MCP23017_EXT_ADDR, mcpRegsEx);
 }
+
+
+// ---------------------Touchscreen functions----------------------------
+uint8_t Inkplate::tsWriteRegs(uint8_t _addr, const uint8_t *_buff, uint8_t _size)
+{
+  Wire.beginTransmission(_addr);
+  Wire.write(_buff, _size);
+  return Wire.endTransmission();
+}
+
+void Inkplate::tsReadRegs(uint8_t _addr, uint8_t *_buff, uint8_t _size)
+{
+  Wire.requestFrom(_addr, _size);
+  Wire.readBytes(_buff, _size);
+}
+
+void Inkplate::tsHardwareReset()
+{
+  digitalWrite(TS_RTS, LOW);
+  delay(15);
+  digitalWrite(TS_RTS, HIGH);
+  delay(15);
+}
+
+bool Inkplate::tsSoftwareReset()
+{
+  const uint8_t soft_rst_cmd[] = {0x77, 0x77, 0x77, 0x77};
+  if (tsWriteRegs(TS_ADDR, soft_rst_cmd, 4) == 0)
+  {
+    uint8_t rb[4];
+    uint16_t timeout = 1000;
+    while (!_tsFlag && timeout > 0)
+    {
+      delay(1);
+      timeout--;
+    }
+    if (timeout > 0) _tsFlag = true;
+    Wire.requestFrom(0x15, 4);
+    Wire.readBytes(rb, 4);
+    _tsFlag = false;
+    if (!memcmp(rb, hello_packet, 4))
+    {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  else
+  {
+    return false;
+  }
+}
+
+bool Inkplate::tsInit(uint8_t _pwrState)
+{
+  pinMode(TS_INT, INPUT_PULLUP);
+  pinMode(TS_RTS, OUTPUT);
+  attachInterrupt(TS_INT, tsInt, FALLING);
+  tsHardwareReset();
+  if (!tsSoftwareReset())
+  {
+    detachInterrupt(TS_INT);
+    return false;
+  }
+  tsGetResolution(&_tsXResolution, &_tsYResolution);
+  tsSetPowerState(_pwrState);
+  return true;
+}
+
+void Inkplate::tsGetRawData(uint8_t *b)
+{
+  Wire.requestFrom(TS_ADDR, 8);
+  Wire.readBytes(b, 8);
+}
+
+void Inkplate::tsGetXY(uint8_t *_d, uint16_t *x, uint16_t *y)
+{
+  *x = *y = 0;
+  *x = (_d[0] & 0xf0);
+  *x <<= 4;
+  *x |= _d[1];
+  *y = (_d[0] & 0x0f);
+  *y <<= 8;
+  *y |= _d[2];
+}
+
+uint8_t Inkplate::tsGetData(uint16_t *xPos, uint16_t *yPos) {
+  uint8_t _raw[8];
+  uint16_t xRaw[2], yRaw[2];
+  uint8_t fingers = 0;
+  _tsFlag = false;
+  tsGetRawData(_raw);
+  for (int i = 0; i < 8; i++)
+  {
+    if (_raw[7] & (1 << i)) fingers++;
+  }
+
+  for (int i = 0; i < 2; i++)
+  {
+    tsGetXY((_raw + 1) + (i * 3), &xRaw[i], &yRaw[i]);
+    yPos[i] = ((xRaw[i] * 757) / _tsXResolution);
+    xPos[i] = 1023 - ((yRaw[i] * 1023) / _tsYResolution);
+  }
+  return fingers;
+}
+
+void Inkplate::tsGetResolution(uint16_t *xRes, uint16_t *yRes)
+{
+  const uint8_t cmd_x[] = {0x53, 0x60, 0x00, 0x00}; // Get x resolution
+  const uint8_t cmd_y[] = {0x53, 0x63, 0x00, 0x00}; // Get y resolution
+  uint8_t rec[4];
+  tsWriteRegs(TS_ADDR, cmd_x, 4);
+  tsReadRegs(TS_ADDR, rec, 4);
+  *xRes = ((rec[2])) | ((rec[3] & 0xf0) << 4);
+  tsWriteRegs(TS_ADDR, cmd_y, 4);
+  tsReadRegs(TS_ADDR, rec, 4);
+  *yRes = ((rec[2])) | ((rec[3] & 0xf0) << 4);
+  _tsFlag = false;
+}
+
+void Inkplate::tsSetPowerState(uint8_t _s)
+{
+  _s &= 1;
+  uint8_t powerStateReg[] = {0x54, 0x50, 0x00, 0x01};
+  powerStateReg[1] |= (_s << 3);
+  tsWriteRegs(TS_ADDR, powerStateReg, 4);
+}
+
+uint8_t Inkplate::tsGetPowerState()
+{
+  const uint8_t powerStateReg[] = {0x53, 0x50, 0x00, 0x01};
+  uint8_t buf[4];
+  tsWriteRegs(TS_ADDR, powerStateReg, 4);
+  _tsFlag = false;
+  tsReadRegs(TS_ADDR, buf, 4);
+  return (buf[1] >> 3) & 1;
+}
+
+bool Inkplate::tsAvailable()
+{
+  return _tsFlag;
+}
