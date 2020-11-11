@@ -15,6 +15,15 @@ void setup() {
     Serial.println("Touchscreen init fail");
     while (true);
   }
+
+  //NOTE!!!
+  //Touchscreen cooridinates are automatically swapped and adjusted when screen is rotated
+  display.setRotation(2);
+  display.fillTriangle(10, 10, 20, 40, 40, 20, BLACK);
+  display.setTextSize(3);
+  display.setCursor(60, 60);
+  display.print("(0,0) position");
+  display.display();
 }
 
 void loop()

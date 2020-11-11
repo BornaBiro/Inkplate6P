@@ -130,22 +130,24 @@ void Inkplate::begin(void) {
 
 //Draw function, used by Adafruit GFX.
 void Inkplate::drawPixel(int16_t x0, int16_t y0, uint16_t color) {
-  if (x0 > E_INK_WIDTH-1 || y0 > E_INK_HEIGHT-1 || x0 < 0 || y0 < 0) return;
+    if (x0 > width() - 1 || y0 > height() - 1 || x0 < 0 || y0 < 0)
+        return;
 
-  switch (_rotation) {
+    switch (rotation)
+    {
     case 1:
-      _swap_int16_t(x0, y0);
-      x0 = _width - x0 - 1;
-      break;
+        _swap_int16_t(x0, y0);
+        x0 = height() - x0 - 1;
+        break;
     case 2:
-      x0 = _width - x0 - 1;
-      y0 = _height - y0 - 1;
-      break;
+        x0 = width() - x0 - 1;
+        y0 = height() - y0 - 1;
+        break;
     case 3:
-      _swap_int16_t(x0, y0);
-      y0 = _width - y0 - 1;
-      break;
-  }
+        _swap_int16_t(x0, y0);
+        y0 = width() - y0 - 1;
+        break;
+    }
 
   if (_displayMode == 0) {
     int x = x0 / 8;
@@ -317,25 +319,20 @@ void Inkplate::drawBitmap3Bit(int16_t _x, int16_t _y, const unsigned char* _p, i
 }
 
 void Inkplate::setRotation(uint8_t r) {
-  _rotation = r % 4;
-  switch (rotation) {
+    rotation = (r & 3);
+    switch (rotation)
+    {
     case 0:
-      _width  = E_INK_WIDTH;
-      _height = E_INK_HEIGHT;
-      break;
-    case 1:
-      _width  = E_INK_HEIGHT;
-      _height = E_INK_WIDTH;
-      break;
     case 2:
-      _width  = E_INK_WIDTH;
-      _height = E_INK_HEIGHT;
-      break;
+        _width = E_INK_WIDTH;
+        _height = E_INK_HEIGHT;
+        break;
+    case 1:
     case 3:
-      _width  = E_INK_HEIGHT;
-      _height = E_INK_WIDTH;
-      break;
-  }
+        _width = E_INK_HEIGHT;
+        _height = E_INK_WIDTH;
+        break;
+    }
 }
 
 //Turn off epapewr supply and put all digital IO pins in high Z state
@@ -1181,8 +1178,25 @@ uint8_t Inkplate::tsGetData(uint16_t *xPos, uint16_t *yPos) {
   for (int i = 0; i < 2; i++)
   {
     tsGetXY((_raw + 1) + (i * 3), &xRaw[i], &yRaw[i]);
-    yPos[i] = ((xRaw[i] * 757) / _tsXResolution);
-    xPos[i] = 1023 - ((yRaw[i] * 1023) / _tsYResolution);
+    switch (rotation)
+    {
+    case 0:
+        yPos[i] = ((xRaw[i] * E_INK_HEIGHT - 1) / _tsXResolution);
+        xPos[i] = E_INK_WIDTH - 1 - ((yRaw[i] * E_INK_WIDTH - 1) / _tsYResolution);
+        break;
+    case 1:
+        xPos[i] = ((xRaw[i] * E_INK_HEIGHT - 1) / _tsXResolution);
+        yPos[i] = ((yRaw[i] * E_INK_WIDTH - 1) / _tsYResolution);
+        break;
+    case 2:
+        yPos[i] = E_INK_HEIGHT - 1 - ((xRaw[i] * E_INK_HEIGHT - 1) / _tsXResolution);
+        xPos[i] = ((yRaw[i] * E_INK_WIDTH - 1) / _tsYResolution);
+        break;
+    case 3:
+        xPos[i] = E_INK_HEIGHT - 1 - ((xRaw[i] * E_INK_HEIGHT - 1) / _tsXResolution);
+        yPos[i] = E_INK_WIDTH - 1 - ((yRaw[i] * E_INK_WIDTH - 1) / _tsYResolution);
+        break;
+    }
   }
   return fingers;
 }
