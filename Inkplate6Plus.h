@@ -70,9 +70,7 @@ NOTE: This library is still heavily in progress, so there is still some bugs. Us
 #define GPIO0_ENABLE 		8
 #define INKPLATE_1BIT 		0
 #define INKPLATE_3BIT 		1
-#define PAD1 				0
-#define PAD2 				1
-#define PAD3 				2
+#define BACKLIGHT_EN        11
 #define PWR_GOOD_OK   0b11111010
 
 #define DATA    		0x0E8C0030   //D0-D7 = GPIO4 GPIO5 GPIO18 GPIO19 GPIO23 GPIO25 GPIO26 GPIO27
@@ -123,9 +121,10 @@ NOTE: This library is still heavily in progress, so there is still some bugs. Us
 #endif
 
 // Touchscreen defines
-#define   TS_RTS              13
-#define   TS_INT              36
-#define   TS_ADDR             0x15
+#define     TOUCHSCREEN_EN      12
+#define     TS_RTS              10
+#define     TS_INT              36
+#define     TS_ADDR             0x15
 
 
 extern SPIClass spi2;
@@ -187,7 +186,6 @@ class Inkplate : public Adafruit_GFX {
 	SPIClass getSPI();
 	uint8_t getPanelState();
     void setPanelState(uint8_t);
-    uint8_t readTouchpad(uint8_t);
     int8_t readTemperature();
     double readBattery();
 	void vscan_start();
@@ -211,10 +209,15 @@ class Inkplate : public Adafruit_GFX {
     
     // Touchscreen public functions
     bool tsInit(uint8_t _pwrState);
+    void tsShutdown();
     bool tsAvailable();
     void tsSetPowerState(uint8_t _s);
     uint8_t tsGetPowerState();
     uint8_t tsGetData(uint16_t *xPos, uint16_t *yPos);
+    
+    // Backlight public functions
+    void setBackLight(uint8_t _v);
+    void backlight(bool _e);
 
   private:
 	uint8_t mcpRegsInt[22], mcpRegsEx[22];

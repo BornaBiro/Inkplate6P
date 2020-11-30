@@ -86,13 +86,16 @@ void Inkplate::begin(void) {
     pinMode(26, OUTPUT);
     pinMode(27, OUTPUT); //D7
   
-    // TOUCHPAD PINS
-    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 10, INPUT);
-    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 11, INPUT);
-    pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 12, INPUT);
-  
     // Battery voltage Switch MOSFET
     pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, 9, OUTPUT);
+    
+    // Disable/Enable Touchscreen PWR
+    pinMode(TOUCHSCREEN_EN, OUTPUT);
+    digitalWrite(TOUCHSCREEN_EN, HIGH);
+    
+    // Disable/Enable Backlight PWR
+    pinMode(BACKLIGHT_EN, OUTPUT);
+    digitalWrite(BACKLIGHT_EN, HIGH);
   
     D_memory_new = (uint8_t*)ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 8);
     _partial = (uint8_t*)ps_malloc(E_INK_WIDTH * E_INK_HEIGHT / 8);
@@ -481,10 +484,6 @@ uint8_t Inkplate::getPanelState() {
 
 void Inkplate::setPanelState(uint8_t state) {
     _panelOn = state;
-}
-
-uint8_t Inkplate::readTouchpad(uint8_t _pad) {
-  return digitalReadInternal(MCP23017_INT_ADDR, mcpRegsInt, (_pad&3)+10);
 }
 
 int8_t Inkplate::readTemperature() {
@@ -1100,9 +1099,9 @@ void Inkplate::tsReadRegs(uint8_t _addr, uint8_t *_buff, uint8_t _size)
 
 void Inkplate::tsHardwareReset()
 {
-  digitalWrite(TS_RTS, LOW);
+  digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, TS_RTS, LOW);
   delay(15);
-  digitalWrite(TS_RTS, HIGH);
+  digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, TS_RTS, HIGH);
   delay(15);
 }
 
@@ -1137,8 +1136,11 @@ bool Inkplate::tsSoftwareReset()
 
 bool Inkplate::tsInit(uint8_t _pwrState)
 {
+  // Enable power to TS
+  digitalWrite(TOUCHSCREEN_EN, LOW);
+  
   pinMode(TS_INT, INPUT_PULLUP);
-  pinMode(TS_RTS, OUTPUT);
+  pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, TS_RTS, OUTPUT);
   attachInterrupt(TS_INT, tsInt, FALLING);
   tsHardwareReset();
   if (!tsSoftwareReset())
@@ -1149,6 +1151,11 @@ bool Inkplate::tsInit(uint8_t _pwrState)
   tsGetResolution(&_tsXResolution, &_tsYResolution);
   tsSetPowerState(_pwrState);
   return true;
+}
+
+void Inkplate::tsShutdown()
+{
+    digitalWrite(TOUCHSCREEN_EN, HIGH);
 }
 
 void Inkplate::tsGetRawData(uint8_t *b)
@@ -1240,4 +1247,26 @@ uint8_t Inkplate::tsGetPowerState()
 bool Inkplate::tsAvailable()
 {
   return _tsFlag;
+}
+
+void Inkplate::setBackLight(uint8_t _v)
+{
+    Wire.beginTransmission(0x5C >> 1);
+    Wire.write(0);
+    Wire.write(_v & 0b00111111);
+    Wire.endTransmission();
+}
+
+void Inkplate::backlight(bool _e)
+{
+    if (_e)
+    {
+        pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, BACKLIGHT_EN, OUTPUT);
+        digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, BACKLIGHT_EN, LOW);
+    }
+    else
+    {
+        pinModeInternal(MCP23017_INT_ADDR, mcpRegsInt, BACKLIGHT_EN, OUTPUT);
+        digitalWriteInternal(MCP23017_INT_ADDR, mcpRegsInt, BACKLIGHT_EN, HIGH);
+    }
 }
