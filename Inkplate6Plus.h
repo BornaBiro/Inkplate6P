@@ -216,7 +216,7 @@ class Inkplate : public Adafruit_GFX {
     uint8_t tsGetData(uint16_t *xPos, uint16_t *yPos);
     
     // Backlight public functions
-    void setBackLight(uint8_t _v);
+    void setBacklight(uint8_t _v);
     void backlight(bool _e);
 
   private:

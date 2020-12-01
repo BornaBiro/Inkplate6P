@@ -1249,11 +1249,11 @@ bool Inkplate::tsAvailable()
   return _tsFlag;
 }
 
-void Inkplate::setBackLight(uint8_t _v)
+void Inkplate::setBacklight(uint8_t _v)
 {
     Wire.beginTransmission(0x5C >> 1);
     Wire.write(0);
-    Wire.write(_v & 0b00111111);
+    Wire.write(63 - (_v & 0b00111111));
     Wire.endTransmission();
 }
 
